@@ -1,8 +1,0 @@
-# Memory directory
-
-This directory contains project memory and decision records:
-
-- `decisions/` - Architecture Decision Records (ADRs)
-- `learnings/` - Technical learnings and insights
-- `context/` - Project context and background
-- `troubleshooting/` - Common issues and solutions

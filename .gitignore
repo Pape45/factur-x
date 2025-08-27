@@ -79,20 +79,3 @@ Thumbs.db
 *.p12
 *.pfx
 
-# Factur-X specific
-*.pdf
-*.xml
-/test-invoices/
-/generated-invoices/
-
-# Memory and docs (keep structure, ignore content)
-/memory/decisions/*.md
-/memory/learnings/*.md
-/memory/context/*.md
-/memory/troubleshooting/*.md
-!/memory/**/.gitkeep
-
-# Keep important config files
-!.github/
-!.vscode/settings.json
-!.vscode/extensions.json

@@ -1,8 +1,0 @@
-# Infrastructure directory
-
-This directory contains infrastructure configurations:
-
-- `docker/` - Dockerfiles for linux/arm64
-- `nginx/` - Reverse proxy configuration
-- `github/` - GitHub Actions CI/CD workflows
-- `compose/` - Docker Compose files for dev and prod
