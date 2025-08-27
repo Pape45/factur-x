@@ -1,0 +1,6 @@
+# Packages directory
+
+This directory contains shared packages:
+
+- `ui/` - Shared React components
+- `config/` - Shared ESLint, Prettier, and TypeScript configurations

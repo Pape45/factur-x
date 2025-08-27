@@ -1,105 +1,98 @@
-# -------------------------------------------------------
-# Factur-X Express .gitignore (monorepo)
-# Covers: Node.js / Next.js, Python (uv), Java, Docker, DB
-# -------------------------------------------------------
-
-# --- Node / Next.js ---
+# Dependencies
 node_modules/
 .pnpm-store/
-.pnp.*
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
 .next/
+out/
 dist/
 build/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.nyc_output/
 coverage/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.vscode/*
-!.vscode/extensions.json
+pnpm-debug.log*
+lerna-debug.log*
 
-# --- Python / FastAPI (uv package manager) ---
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-*.egg-info/
-.eggs/
-.venv/
-.uv/
-.uv.lock
-.mypy_cache/
-.pytest_cache/
-ruff_cache/
-.coverage
-htmlcov/
-
-# --- Java / Mustangproject ---
-*.class
-*.jar
-*.war
-*.ear
-*.iml
-*.ipr
-*.iws
-target/
-out/
-
-# --- IDE / OS files ---
-.DS_Store
-Thumbs.db
-.idea/
-*.swp
-*.swo
-
-# --- Docker & runtime ---
-/infra/docker/volumes/*
-/infra/docker/data/*
-/infra/docker/logs/*
+# Runtime data
+pids/
 *.pid
 *.seed
-docker-compose.override.yml
+*.pid.lock
 
-# --- Database / Postgres ---
-*.db
-*.sqlite
-*.sql
-*.dump
-pgdata/
-postgres-data/
+# Docker
+.dockerignore
 
-# --- Env & secrets ---
-.env
-.env.*
-.env.local
-*.key
-*.pem
-*.crt
-*.csr
-
-# --- Test / temp files ---
-tmp/
+# Temporary files
+.tmp/
 temp/
 *.tmp
-*.bak
+*.temp
 
-# --- Reports & artifacts ---
-reports/
-*.xml
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Factur-X specific
 *.pdf
-*.zip
-ValidationReport.json
+*.xml
+/test-invoices/
+/generated-invoices/
 
-# --- CI/CD cache ---
-/.github/workflows/*.log
-/.github/actions/cache/
+# Memory and docs (keep structure, ignore content)
+/memory/decisions/*.md
+/memory/learnings/*.md
+/memory/context/*.md
+/memory/troubleshooting/*.md
+!/memory/**/.gitkeep
 
-# --- Memory & docs builds ---
-/memory/checkpoints/STATUS.cache
-/docs/.vitepress/cache
-/docs/.vitepress/dist
-
-# --- Misc ---
-.sops.yaml
-.age-key.txt
+# Keep important config files
+!.github/
+!.vscode/settings.json
+!.vscode/extensions.json

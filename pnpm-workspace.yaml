@@ -1,0 +1,17 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Shared dependencies hoisting
+shared-workspace-lockfile: true
+hoist-pattern:
+  - '*eslint*'
+  - '*prettier*'
+  - '*typescript*'
+  - '@types/*'
+
+# Prevent hoisting of framework-specific packages
+public-hoist-pattern:
+  - '!*react*'
+  - '!*next*'
+  - '!*fastapi*'

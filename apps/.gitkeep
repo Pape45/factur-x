@@ -1,0 +1,7 @@
+# Apps directory
+
+This directory contains the main applications:
+
+- `web/` - Next.js 14 frontend application
+- `facturx-api/` - FastAPI backend for Factur-X generation
+- `worker/` - (Optional) Background task worker

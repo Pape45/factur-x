@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    platform: linux/arm64
+    container_name: facturx-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-facturx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-facturx_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-facturx}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - facturx-network
+
+  redis:
+    image: redis:7-alpine
+    platform: linux/arm64
+    container_name: facturx-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - facturx-network
+
+  # Development services (optional, can be run locally)
+  facturx-api:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.api
+      target: development
+    platform: linux/arm64
+    container_name: facturx-api-dev
+    environment:
+      - DATABASE_URL=postgresql://facturx:password@postgres:5432/facturx_db
+      - REDIS_URL=redis://redis:6379
+      - API_DEBUG=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../apps/facturx-api:/app
+      - /app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - facturx-network
+    profiles:
+      - full-stack
+
+  web:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.web
+      target: development
+    platform: linux/arm64
+    container_name: facturx-web-dev
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - facturx-api
+    networks:
+      - facturx-network
+    profiles:
+      - full-stack
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  facturx-network:
+    driver: bridge
