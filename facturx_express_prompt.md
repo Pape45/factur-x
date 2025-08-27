@@ -438,4 +438,5 @@ CHANGELOG.md                        → tenue stricte
     
 Populate a better .gitignore
 For python, we use uv as package manager
+I have add the remote git repository
 ---
