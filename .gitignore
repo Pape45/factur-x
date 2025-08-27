@@ -1,10 +1,105 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# -------------------------------------------------------
+# Factur-X Express .gitignore (monorepo)
+# Covers: Node.js / Next.js, Python (uv), Java, Docker, DB
+# -------------------------------------------------------
 
-# Virtual environments
-.venv
+# --- Node / Next.js ---
+node_modules/
+.pnpm-store/
+.pnp.*
+.next/
+dist/
+build/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/*
+!.vscode/extensions.json
+
+# --- Python / FastAPI (uv package manager) ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.venv/
+.uv/
+.uv.lock
+.mypy_cache/
+.pytest_cache/
+ruff_cache/
+.coverage
+htmlcov/
+
+# --- Java / Mustangproject ---
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.ipr
+*.iws
+target/
+out/
+
+# --- IDE / OS files ---
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+
+# --- Docker & runtime ---
+/infra/docker/volumes/*
+/infra/docker/data/*
+/infra/docker/logs/*
+*.pid
+*.seed
+docker-compose.override.yml
+
+# --- Database / Postgres ---
+*.db
+*.sqlite
+*.sql
+*.dump
+pgdata/
+postgres-data/
+
+# --- Env & secrets ---
+.env
+.env.*
+.env.local
+*.key
+*.pem
+*.crt
+*.csr
+
+# --- Test / temp files ---
+tmp/
+temp/
+*.tmp
+*.bak
+
+# --- Reports & artifacts ---
+reports/
+*.xml
+*.pdf
+*.zip
+ValidationReport.json
+
+# --- CI/CD cache ---
+/.github/workflows/*.log
+/.github/actions/cache/
+
+# --- Memory & docs builds ---
+/memory/checkpoints/STATUS.cache
+/docs/.vitepress/cache
+/docs/.vitepress/dist
+
+# --- Misc ---
+.sops.yaml
+.age-key.txt
