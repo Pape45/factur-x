@@ -437,6 +437,6 @@ CHANGELOG.md                        → tenue stricte
 - **Spécifications externes DGFiP v3.0** (PPF/PDP, formats d’échange). [impots.gouv.fr+1](https://www.impots.gouv.fr/specifications-externes-b2b?utm_source=chatgpt.com)
     
 Populate a better .gitignore
-For python, we use uv as package manager
+For python, we use uv as package manager.
 I have add the remote git repository
 ---
