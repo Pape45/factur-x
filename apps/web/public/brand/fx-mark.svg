@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" aria-labelledby="title desc" role="img">
+  <title>Factur‑X Express — monogram</title>
+  <desc>Stylised 'F' and 'X' monogram built with rounded strokes.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Monogram 'F' -->
+  <path d="M64 48 V208" />
+  <path d="M64 80 H144" />
+  <path d="M64 128 H120" />
+  <!-- Monogram 'X' -->
+  <path d="M168 80 L232 144" />
+  <path d="M232 80 L168 144" />
+  </g>
+</svg>

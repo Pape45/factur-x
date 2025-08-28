@@ -1,0 +1,26 @@
+{
+  "name": "facturx-express",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Factur-X Express SaaS - Generate compliant electronic invoices",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel --recursive dev",
+    "build": "pnpm --recursive build",
+    "test": "pnpm --recursive test",
+    "lint": "pnpm --recursive lint",
+    "clean": "pnpm --recursive clean"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.14.0"
+}

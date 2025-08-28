@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FX">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#2F6DF3"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(0,0)">
+    <!-- F -->
+    <path d="M16 10 V54" />
+    <path d="M16 18 H36" />
+    <path d="M16 32 H30" />
+    <!-- X -->
+    <path d="M40 18 L52 30" />
+    <path d="M52 18 L40 30" />
+  </g>
+</svg>

@@ -1,0 +1,1 @@
+"""Routers package for Factur-X API."""

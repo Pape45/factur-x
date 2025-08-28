@@ -1,0 +1,15 @@
+:root{
+  --fx-graphite: #0B0F19; /* primary text on light */
+  --fx-slate:    #1F2937;
+  --fx-accent:   #2F6DF3; /* brand blue */
+  --fx-accent-ink: #FFFFFF;
+  --fx-ink:      #0B0F19;
+  --fx-muted:    #6B7280;
+}
+.dark:root, [data-theme="dark"]{
+  --fx-graphite: #FFFFFF; /* primary text on dark */
+  --fx-ink:      #FFFFFF;
+  --fx-muted:    #CBD5E1;
+}
+.logo { color: var(--fx-accent); }
+.logo-on-dark { color: #93B4FF; }

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 160" aria-labelledby="title desc" role="img">
+  <title>Factur‑X Express — wordmark (dark)</title>
+  <desc>Monogram at left, name on the right. Optimised for dark backgrounds.</desc>
+  <defs>
+    <style>
+      .mark { fill: none; stroke: #93B4FF; stroke-width: 16; stroke-linecap: round; stroke-linejoin: round; }
+      .name { font: 700 40px 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; fill: #FFFFFF; }
+      .tag  { font: 500 18px 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; fill: #CBD5E1; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="720" height="160" fill="#0B0F19"/>
+  <!-- mark -->
+  <g transform="translate(16,16)">
+    <rect x="0" y="0" width="128" height="128" rx="28" fill="#132347"/>
+    <g class="mark" transform="translate(0,0) scale(0.5) translate(0,0)">
+      <!-- Monogram 'F' -->
+  <path d="M64 48 V208" />
+  <path d="M64 80 H144" />
+  <path d="M64 128 H120" />
+  <!-- Monogram 'X' -->
+  <path d="M168 80 L232 144" />
+  <path d="M232 80 L168 144" />
+    </g>
+  </g>
+  <!-- name -->
+  <g transform="translate(168,58)">
+    <text class="name">Factur‑X Express</text>
+    <text class="tag" y="42">Générer • Valider • Exporter</text>
+  </g>
+</svg>
