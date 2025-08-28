@@ -174,46 +174,34 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache pip dependencies
+      - name: Install UV
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add UV to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Cache UV dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('apps/facturx-api/uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: apps/facturx-api/.venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('apps/facturx-api/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
+            ${{ runner.os }}-uv-
 
       - name: Install dependencies
-        run: poetry install
+        run: uv sync --group dev
         working-directory: apps/facturx-api
 
       - name: Lint with ruff
-        run: poetry run ruff check .
+        run: uv run ruff check .
         working-directory: apps/facturx-api
 
       - name: Format check with ruff
-        run: poetry run ruff format --check .
+        run: uv run ruff format --check .
         working-directory: apps/facturx-api
 
       - name: Type check with mypy
-        run: poetry run mypy .
+        run: uv run mypy .
         working-directory: apps/facturx-api
 
   test-backend:
@@ -229,39 +217,26 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache pip dependencies
+      - name: Install UV
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add UV to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Cache UV dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('apps/facturx-api/uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: apps/facturx-api/.venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('apps/facturx-api/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
+            ${{ runner.os }}-uv-
 
       - name: Install dependencies
-        run: poetry install
+        run: uv sync --group dev
         working-directory: apps/facturx-api
 
       - name: Run tests with coverage
-        run: |
-          poetry run pytest --cov=app --cov-report=xml --cov-report=term-missing
+        run: uv run pytest --cov=. --cov-report=xml
         working-directory: apps/facturx-api
 
       - name: Upload coverage to Codecov
@@ -270,6 +245,7 @@ jobs:
           file: apps/facturx-api/coverage.xml
           flags: backend
           name: backend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   security-scan:
     runs-on: ubuntu-latest

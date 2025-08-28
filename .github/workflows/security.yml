@@ -91,21 +91,23 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry (Backend)
+      - name: Install UV (Backend)
         if: matrix.component == 'backend'
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add UV to PATH (Backend)
+        if: matrix.component == 'backend'
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install backend dependencies
         if: matrix.component == 'backend'
-        run: poetry install
+        run: uv sync --group dev
         working-directory: apps/facturx-api
 
       - name: Run Safety check (Backend)
         if: matrix.component == 'backend'
         run: |
-          poetry run safety check --json > safety-report.json || true
+          uv run safety check --json > safety-report.json || true
           if [ -s safety-report.json ]; then
             echo "Safety check found vulnerabilities"
             cat safety-report.json
@@ -115,7 +117,7 @@ jobs:
       - name: Run Bandit security linter (Backend)
         if: matrix.component == 'backend'
         run: |
-          poetry run bandit -r app/ -f json -o bandit-report.json || true
+          uv run bandit -r app/ -f json -o bandit-report.json || true
           if [ -s bandit-report.json ]; then
             echo "Bandit found security issues"
             cat bandit-report.json
@@ -210,18 +212,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install UV
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add UV to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Python dependencies
-        run: poetry install
+        run: uv sync --group dev
         working-directory: apps/facturx-api
 
       - name: Check Python licenses
         run: |
-          poetry run pip-licenses --format=json > python-licenses.json || true
+          uv run pip-licenses --format=json > python-licenses.json || true
           if [ -s python-licenses.json ]; then
             echo "Python license check completed"
             cat python-licenses.json
