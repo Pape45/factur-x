@@ -3,19 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "description": "Factur-X Express SaaS - Generate compliant electronic invoices",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "pnpm --parallel --recursive dev",
     "build": "pnpm --recursive build",
     "test": "pnpm --recursive test",
     "lint": "pnpm --recursive lint",
-    "clean": "pnpm --recursive clean"
+    "clean": "pnpm --recursive clean",
+    "prepare": "husky install"
   },
   "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
     "@types/node": "^22.0.0",
+    "husky": "^8.0.3",
     "typescript": "^5.0.0"
   },
   "engines": {

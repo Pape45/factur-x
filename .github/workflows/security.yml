@@ -1,0 +1,306 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  sast-scan:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [frontend, backend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (Frontend)
+        if: matrix.component == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm (Frontend)
+        if: matrix.component == 'frontend'
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+
+      - name: Install frontend dependencies
+        if: matrix.component == 'frontend'
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit npm dependencies
+        if: matrix.component == 'frontend'
+        run: |
+          pnpm audit --audit-level moderate --json > npm-audit.json || true
+          if [ -s npm-audit.json ]; then
+            echo "NPM audit found vulnerabilities"
+            cat npm-audit.json
+          fi
+
+      - name: Setup Python (Backend)
+        if: matrix.component == 'backend'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry (Backend)
+        if: matrix.component == 'backend'
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install backend dependencies
+        if: matrix.component == 'backend'
+        run: poetry install
+        working-directory: apps/facturx-api
+
+      - name: Run Safety check (Backend)
+        if: matrix.component == 'backend'
+        run: |
+          poetry run safety check --json > safety-report.json || true
+          if [ -s safety-report.json ]; then
+            echo "Safety check found vulnerabilities"
+            cat safety-report.json
+          fi
+        working-directory: apps/facturx-api
+
+      - name: Run Bandit security linter (Backend)
+        if: matrix.component == 'backend'
+        run: |
+          poetry run bandit -r app/ -f json -o bandit-report.json || true
+          if [ -s bandit-report.json ]; then
+            echo "Bandit found security issues"
+            cat bandit-report.json
+          fi
+        working-directory: apps/facturx-api
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ matrix.component }}
+          path: |
+            npm-audit.json
+            safety-report.json
+            bandit-report.json
+          retention-days: 30
+
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build API image for scanning
+        run: |
+          docker build -t facturx-api:scan ./apps/facturx-api
+
+      - name: Run Trivy vulnerability scanner on API
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'facturx-api:scan'
+          format: 'sarif'
+          output: 'trivy-api.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-api.sarif'
+          category: 'container-api'
+
+      - name: Build Worker image for scanning
+        run: |
+          docker build -t facturx-worker:scan ./apps/worker
+
+      - name: Run Trivy vulnerability scanner on Worker
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'facturx-worker:scan'
+          format: 'sarif'
+          output: 'trivy-worker.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-worker.sarif'
+          category: 'container-worker'
+
+  license-scan:
+    name: License Compliance Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check licenses
+        run: |
+          npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0' --excludePrivatePackages > license-report.txt || true
+          if [ -s license-report.txt ]; then
+            echo "License check completed"
+            cat license-report.txt
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install Python dependencies
+        run: poetry install
+        working-directory: apps/facturx-api
+
+      - name: Check Python licenses
+        run: |
+          poetry run pip-licenses --format=json > python-licenses.json || true
+          if [ -s python-licenses.json ]; then
+            echo "Python license check completed"
+            cat python-licenses.json
+          fi
+        working-directory: apps/facturx-api
+
+      - name: Upload license reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-reports
+          path: |
+            license-report.txt
+            apps/facturx-api/python-licenses.json
+          retention-days: 30
+
+  compliance-check:
+    name: Compliance and Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for required files
+        run: |
+          echo "Checking for required compliance files..."
+          
+          # Check for security policy
+          if [ ! -f "SECURITY.md" ]; then
+            echo "❌ SECURITY.md file missing"
+            exit 1
+          fi
+          
+          # Check for license
+          if [ ! -f "LICENSE" ] && [ ! -f "LICENSE.md" ] && [ ! -f "LICENSE.txt" ]; then
+            echo "❌ LICENSE file missing"
+            exit 1
+          fi
+          
+          # Check for contributing guidelines
+          if [ ! -f "CONTRIBUTING.md" ]; then
+            echo "❌ CONTRIBUTING.md file missing"
+            exit 1
+          fi
+          
+          # Check for code of conduct
+          if [ ! -f "CODE_OF_CONDUCT.md" ]; then
+            echo "❌ CODE_OF_CONDUCT.md file missing"
+            exit 1
+          fi
+          
+          echo "✅ All required compliance files present"
+
+      - name: Check Docker security best practices
+        run: |
+          echo "Checking Dockerfile security practices..."
+          
+          # Check if Dockerfiles use non-root users
+          for dockerfile in $(find . -name "Dockerfile*" -type f); do
+            echo "Checking $dockerfile"
+            if ! grep -q "USER" "$dockerfile"; then
+              echo "⚠️  $dockerfile may be running as root"
+            fi
+          done
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scan, sast-scan, dependency-scan, container-scan, license-scan, compliance-check]
+    if: always()
+    steps:
+      - name: Security Scan Summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Scan Type | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Detection | ${{ needs.secret-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST Analysis | ${{ needs.sast-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Scan | ${{ needs.dependency-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Scan | ${{ needs.container-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Compliance | ${{ needs.license-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Compliance Check | ${{ needs.compliance-check.result }} |" >> $GITHUB_STEP_SUMMARY

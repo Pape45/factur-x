@@ -1,0 +1,72 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Check for secrets using gitleaks (if available)
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "🔐 Scanning for secrets with gitleaks..."
+  gitleaks detect --source . --verbose || {
+    echo "❌ Gitleaks found potential secrets in your commit!"
+    echo "Please review and remove any sensitive information before committing."
+    exit 1
+  }
+  echo "✅ No secrets detected"
+else
+  echo "⚠️  Gitleaks not installed. Consider installing it for secret detection:"
+  echo "   brew install gitleaks"
+fi
+
+# Run linting for all workspaces
+echo "🧹 Running linters..."
+pnpm lint || {
+  echo "❌ Linting failed! Please fix the issues before committing."
+  exit 1
+}
+echo "✅ Linting passed"
+
+# Run tests for all workspaces
+echo "🧪 Running tests..."
+pnpm test || {
+  echo "❌ Tests failed! Please fix the failing tests before committing."
+  exit 1
+}
+echo "✅ Tests passed"
+
+# Check TypeScript compilation
+echo "🔧 Checking TypeScript compilation..."
+if [ -f "tsconfig.json" ]; then
+  npx tsc --noEmit || {
+    echo "❌ TypeScript compilation failed! Please fix the type errors before committing."
+    exit 1
+  }
+  echo "✅ TypeScript compilation passed"
+fi
+
+# Check for large files (>10MB)
+echo "📏 Checking for large files..."
+for file in $(git diff --cached --name-only); do
+  if [ -f "$file" ]; then
+    size=$(wc -c < "$file" 2>/dev/null || echo 0)
+    if [ "$size" -gt 10485760 ]; then  # 10MB
+      echo "❌ File $file is larger than 10MB ($size bytes)"
+      echo "Please use Git LFS for large files or reduce the file size."
+      exit 1
+    fi
+  fi
+done
+echo "✅ No large files detected"
+
+# Check for TODO/FIXME comments in staged files
+echo "📝 Checking for TODO/FIXME comments..."
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|ts|jsx|tsx|py|java)$' || true)
+if [ -n "$staged_files" ]; then
+  todo_count=$(echo "$staged_files" | xargs grep -l "TODO\|FIXME" 2>/dev/null | wc -l || echo 0)
+  if [ "$todo_count" -gt 0 ]; then
+    echo "⚠️  Found $todo_count file(s) with TODO/FIXME comments:"
+    echo "$staged_files" | xargs grep -n "TODO\|FIXME" 2>/dev/null || true
+    echo "Consider addressing these before committing to production."
+  fi
+fi
+
+echo "🎉 All pre-commit checks passed!"

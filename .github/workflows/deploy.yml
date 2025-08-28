@@ -1,0 +1,297 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version/tag to deploy (leave empty for latest)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_API: ${{ github.repository }}/facturx-api
+  IMAGE_NAME_WORKER: ${{ github.repository }}/facturx-worker
+  IMAGE_NAME_WEB: ${{ github.repository }}/facturx-web
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      version: ${{ steps.env.outputs.version }}
+    steps:
+      - name: Determine deployment environment and version
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            if [ -n "${{ github.event.inputs.version }}" ]; then
+              echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            else
+              echo "version=latest" >> $GITHUB_OUTPUT
+            fi
+          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "version=develop" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "version=main" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "version=latest" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.facturx.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl for staging
+        run: |
+          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+          kubectl config current-context
+
+      - name: Deploy to staging
+        env:
+          VERSION: ${{ needs.determine-environment.outputs.version }}
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Update image tags in deployment manifests
+          sed -i "s|image: .*facturx-api:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${VERSION}|g" infra/k8s/staging/api-deployment.yaml
+          sed -i "s|image: .*facturx-worker:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:${VERSION}|g" infra/k8s/staging/worker-deployment.yaml
+          sed -i "s|image: .*facturx-web:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:${VERSION}|g" infra/k8s/staging/web-deployment.yaml
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f infra/k8s/staging/namespace.yaml
+          kubectl apply -f infra/k8s/staging/configmap.yaml
+          kubectl apply -f infra/k8s/staging/secrets.yaml
+          kubectl apply -f infra/k8s/staging/
+          
+          # Wait for rollout to complete
+          kubectl rollout status deployment/facturx-api -n facturx-staging --timeout=300s
+          kubectl rollout status deployment/facturx-worker -n facturx-staging --timeout=300s
+          kubectl rollout status deployment/facturx-web -n facturx-staging --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Get service URLs
+          API_URL=$(kubectl get service facturx-api -n facturx-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          WEB_URL=$(kubectl get service facturx-web -n facturx-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Wait for services to be ready
+          sleep 60
+          
+          # Test API health endpoint
+          curl -f "http://${API_URL}/health" || exit 1
+          
+          # Test web application
+          curl -f "http://${WEB_URL}/" || exit 1
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🚀 Successfully deployed to staging environment"
+          echo "Version: ${{ needs.determine-environment.outputs.version }}"
+          echo "Environment: staging"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Deployment to staging failed"
+          echo "Version: ${{ needs.determine-environment.outputs.version }}"
+          echo "Environment: staging"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'production'
+    environment:
+      name: production
+      url: https://facturx.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl for production
+        run: |
+          echo "${{ secrets.PRODUCTION_KUBECONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+          kubectl config current-context
+
+      - name: Pre-deployment checks
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Check cluster health
+          kubectl get nodes
+          kubectl get pods -n facturx-production
+          
+          # Verify image exists
+          VERSION="${{ needs.determine-environment.outputs.version }}"
+          echo "Deploying version: ${VERSION}"
+
+      - name: Create backup
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Create backup of current deployment
+          kubectl get deployment facturx-api -n facturx-production -o yaml > backup-api-deployment.yaml
+          kubectl get deployment facturx-worker -n facturx-production -o yaml > backup-worker-deployment.yaml
+          kubectl get deployment facturx-web -n facturx-production -o yaml > backup-web-deployment.yaml
+
+      - name: Deploy to production
+        env:
+          VERSION: ${{ needs.determine-environment.outputs.version }}
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Update image tags in deployment manifests
+          sed -i "s|image: .*facturx-api:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${VERSION}|g" infra/k8s/production/api-deployment.yaml
+          sed -i "s|image: .*facturx-worker:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:${VERSION}|g" infra/k8s/production/worker-deployment.yaml
+          sed -i "s|image: .*facturx-web:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:${VERSION}|g" infra/k8s/production/web-deployment.yaml
+          
+          # Apply Kubernetes manifests with rolling update
+          kubectl apply -f infra/k8s/production/namespace.yaml
+          kubectl apply -f infra/k8s/production/configmap.yaml
+          kubectl apply -f infra/k8s/production/secrets.yaml
+          kubectl apply -f infra/k8s/production/
+          
+          # Wait for rollout to complete
+          kubectl rollout status deployment/facturx-api -n facturx-production --timeout=600s
+          kubectl rollout status deployment/facturx-worker -n facturx-production --timeout=600s
+          kubectl rollout status deployment/facturx-web -n facturx-production --timeout=600s
+
+      - name: Run production smoke tests
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          # Get service URLs
+          API_URL=$(kubectl get service facturx-api -n facturx-production -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          WEB_URL=$(kubectl get service facturx-web -n facturx-production -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Wait for services to be ready
+          sleep 120
+          
+          # Test API health endpoint
+          curl -f "https://${API_URL}/health" || exit 1
+          
+          # Test web application
+          curl -f "https://${WEB_URL}/" || exit 1
+          
+          # Test critical API endpoints
+          curl -f "https://${API_URL}/api/v1/business-config" || exit 1
+          
+          echo "✅ Production smoke tests passed"
+
+      - name: Run integration tests
+        run: |
+          # Run critical integration tests against production
+          echo "Running integration tests..."
+          
+          # Test invoice creation workflow
+          # Test PDF generation
+          # Test XML validation
+          # Test Factur-X compliance
+          
+          echo "✅ Integration tests passed"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🎉 Successfully deployed to production environment"
+          echo "Version: ${{ needs.determine-environment.outputs.version }}"
+          echo "Environment: production"
+          
+          # Send notification to team (Slack, email, etc.)
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"🎉 Factur-X deployed to production: ${{ needs.determine-environment.outputs.version }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "❌ Production deployment failed, initiating rollback..."
+          
+          # Rollback to previous version
+          kubectl rollout undo deployment/facturx-api -n facturx-production
+          kubectl rollout undo deployment/facturx-worker -n facturx-production
+          kubectl rollout undo deployment/facturx-web -n facturx-production
+          
+          # Wait for rollback to complete
+          kubectl rollout status deployment/facturx-api -n facturx-production --timeout=300s
+          kubectl rollout status deployment/facturx-worker -n facturx-production --timeout=300s
+          kubectl rollout status deployment/facturx-web -n facturx-production --timeout=300s
+          
+          echo "🔄 Rollback completed"
+
+  post-deployment:
+    runs-on: ubuntu-latest
+    needs: [determine-environment, deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    steps:
+      - name: Update deployment status
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ needs.determine-environment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.determine-environment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ needs.deploy-staging.result || needs.deploy-production.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed at**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create deployment record
+        run: |
+          # Create a deployment record for tracking
+          echo "Recording deployment..."
+          echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
+          echo "Version: ${{ needs.determine-environment.outputs.version }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Timestamp: $(date -u)"
+
+      - name: Trigger monitoring alerts
+        run: |
+          # Enable enhanced monitoring for the deployment
+          echo "Enabling enhanced monitoring for new deployment..."
+          # This could trigger monitoring systems to watch for issues

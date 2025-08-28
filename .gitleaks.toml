@@ -1,0 +1,113 @@
+# Gitleaks configuration for Factur-X Express
+# https://github.com/gitleaks/gitleaks
+
+title = "Gitleaks config for Factur-X Express"
+
+[extend]
+# Use the default gitleaks rules as a base
+path = "https://raw.githubusercontent.com/gitleaks/gitleaks/master/config/gitleaks.toml"
+
+# Additional rules specific to our project
+[[rules]]
+id = "supabase-anon-key"
+description = "Supabase Anonymous Key"
+regex = '''eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*'''
+keywords = [
+    "supabase",
+    "anon",
+    "key",
+]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase Service Role Key"
+regex = '''eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*'''
+keywords = [
+    "service_role",
+    "service-role",
+    "supabase",
+]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret Key"
+regex = '''[A-Za-z0-9+/]{32,}={0,2}'''
+keywords = [
+    "jwt",
+    "secret",
+    "token",
+]
+
+[[rules]]
+id = "docker-registry-token"
+description = "Docker Registry Token"
+regex = '''dckr_pat_[a-zA-Z0-9_-]{36}'''
+keywords = [
+    "docker",
+    "registry",
+    "token",
+]
+
+# Allowlist for false positives
+[allowlist]
+description = "Allowlist for false positives"
+paths = [
+    # Test files and mock data
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/spec/**",
+    "**/mocks/**",
+    "**/fixtures/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/*.mock.*",
+    
+    # Documentation and examples
+    "**/docs/**",
+    "**/examples/**",
+    "README.md",
+    "CHANGELOG.md",
+    
+    # Configuration templates
+    "**/*.example",
+    "**/*.template",
+    "**/*.sample",
+    
+    # Build and dependency files
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+]
+
+regexes = [
+    # Common false positives
+    '''example[_-]?key''',
+    '''test[_-]?secret''',
+    '''dummy[_-]?token''',
+    '''placeholder[_-]?api[_-]?key''',
+    '''your[_-]?api[_-]?key[_-]?here''',
+    '''sk-[x]{32,}''',  # Placeholder OpenAI keys
+    '''pk_test_[a-zA-Z0-9]{24}''',  # Stripe test keys
+    
+    # Base64 encoded common strings
+    '''dGVzdA==''',  # "test" in base64
+    '''ZXhhbXBsZQ==''',  # "example" in base64
+    '''cGxhY2Vob2xkZXI=''',  # "placeholder" in base64
+]
+
+stopwords = [
+    "example",
+    "test",
+    "dummy",
+    "placeholder",
+    "sample",
+    "mock",
+    "fake",
+    "demo",
+]

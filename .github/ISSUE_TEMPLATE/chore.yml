@@ -1,0 +1,174 @@
+name: Chore/Maintenance
+description: Report maintenance tasks, refactoring, or technical debt
+title: "[CHORE] "
+labels: ["chore", "maintenance"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for maintenance tasks, refactoring, dependency updates, documentation improvements, or technical debt.
+
+  - type: textarea
+    id: task-description
+    attributes:
+      label: Task Description
+      description: A clear description of the maintenance task or improvement needed.
+      placeholder: Describe the maintenance task...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task-type
+    attributes:
+      label: Task Type
+      description: What type of maintenance task is this?
+      options:
+        - Code Refactoring
+        - Dependency Update
+        - Documentation Update
+        - Performance Optimization
+        - Security Update
+        - Technical Debt
+        - CI/CD Improvement
+        - Testing Enhancement
+        - Code Cleanup
+        - Configuration Update
+        - Infrastructure Maintenance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this maintenance task needed? What problem does it solve?
+      placeholder: Explain why this task is important...
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope of Work
+      description: What specific changes or improvements are needed?
+      placeholder: |
+        - Update dependency X from version Y to Z
+        - Refactor module A to improve performance
+        - Add tests for component B
+        - Update documentation for feature C
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: Affected Areas
+      description: Which parts of the system will be affected?
+      multiple: true
+      options:
+        - Frontend (Next.js)
+        - Backend (FastAPI)
+        - Database
+        - Docker/Infrastructure
+        - CI/CD Pipeline
+        - Documentation
+        - Dependencies
+        - Security
+        - Performance
+        - Testing
+        - Configuration
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgent is this maintenance task?
+      options:
+        - Low - Can be done when time permits
+        - Medium - Should be done in next sprint
+        - High - Important for stability/security
+        - Critical - Urgent security or stability issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this task is complete?
+      placeholder: |
+        - [ ] Dependency updated successfully
+        - [ ] All tests pass
+        - [ ] Documentation updated
+        - [ ] No breaking changes introduced
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and Considerations
+      description: Are there any risks or special considerations for this task?
+      placeholder: |
+        - Breaking changes in new dependency version
+        - Potential performance impact
+        - Requires database migration
+        - May affect compliance validation
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: compliance-considerations
+    attributes:
+      label: Compliance Considerations
+      description: Does this task affect any compliance requirements?
+      options:
+        - label: May affect EN 16931 compliance
+        - label: May affect PDF/A-3 standards
+        - label: May affect Factur-X validation
+        - label: Security implications
+        - label: Performance implications
+        - label: Accessibility implications
+
+  - type: textarea
+    id: testing-strategy
+    attributes:
+      label: Testing Strategy
+      description: How should this change be tested?
+      placeholder: |
+        - Unit tests for refactored code
+        - Integration tests for API changes
+        - Manual testing of UI changes
+        - Performance benchmarks
+        - Compliance validation tests
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional information, links, or context
+      placeholder: |
+        - Links to relevant documentation
+        - Related issues or PRs
+        - External references
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have clearly described the maintenance task and its scope
+          required: true
+        - label: I have considered the impact on existing functionality
+          required: true
+        - label: I have identified any risks or special considerations
+          required: true
