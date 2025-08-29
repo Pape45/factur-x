@@ -6,7 +6,7 @@
 set -e
 
 DOMAIN="facturx.app"
-EMAIL="admin@facturx.app"  # Remplacez par votre email
+EMAIL="papidiagne370@gmail.com"  # Remplacez par votre email
 
 echo "🔐 Configuration SSL pour $DOMAIN"
 
