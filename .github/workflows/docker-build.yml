@@ -58,7 +58,7 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/facturx-api
           file: ./apps/facturx-api/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
@@ -107,7 +107,7 @@ jobs:
       - name: Build and push Worker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/worker
           file: ./apps/worker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
@@ -156,7 +156,7 @@ jobs:
       - name: Build and push Web image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/web
           file: ./apps/web/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
