@@ -52,7 +52,7 @@ ENV PYTHONUNBUFFERED=1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+    CMD curl -f http://0.0.0.0:8000/health || exit 1
 
 # Expose port
 EXPOSE 8000

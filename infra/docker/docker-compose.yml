@@ -63,6 +63,10 @@ services:
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf
       - ../nginx/conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
+    environment:
+      - DOMAIN_NAME=facturx.app
     depends_on:
       - facturx-api
     networks:
