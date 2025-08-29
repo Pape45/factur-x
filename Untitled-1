@@ -1,115 +1,150 @@
-ubuntu@pipavps [01:17:17 PM] [~/projects/factur-x/infra/docker] [main]
--> % docker compose up -d      
-WARN[0000] /home/ubuntu/projects/factur-x/infra/docker/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
-[+] Running 29/29
- ✔ postgres Pulled                                                                                                           6.4s 
- ✔ nginx Pulled                                                                                                              5.7s 
- ✔ redis Pulled                                                                                                              6.5s 
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-                                                                                                                                  
-#1 [internal] load local bake definitions
-#1 reading from stdin 617B done
-#1 DONE 0.0s
+Voir l'état de tous les conteneurs
+docker ps -a
 
-#2 [internal] load build definition from Dockerfile
-#2 transferring dockerfile: 1.52kB done
-#2 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 2)
-#2 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 5)
-#2 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 26)
-#2 WARN: FromPlatformFlagConstDisallowed: FROM --platform flag should not use constant value "linux/arm64" (line 5)
-#2 WARN: FromPlatformFlagConstDisallowed: FROM --platform flag should not use constant value "linux/arm64" (line 26)
-#2 DONE 0.0s
+# Vérifier les logs de chaque service
+docker logs docker-facturx-api-1
+docker logs docker-postgres-1
+docker logs docker-redis-1
+docker logs docker-nginx-1
+CONTAINER ID   IMAGE                COMMAND                  CREATED         STATUS                          PORTS                                                                          NAMES
+c5658469a08e   nginx:alpine         "/docker-entrypoint.…"   2 minutes ago   Up 2 minutes                    0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp   docker-nginx-1
+59138ec62a2a   docker-facturx-api   "uvicorn main:app --…"   2 minutes ago   Restarting (1) 22 seconds ago                                                                                  docker-facturx-api-1
+bc482e15001c   redis:7-alpine       "docker-entrypoint.s…"   2 minutes ago   Up 2 minutes                    0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp                                    docker-redis-1
+b24365062901   postgres:16-alpine   "docker-entrypoint.s…"   2 minutes ago   Up 2 minutes                    0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                                    docker-postgres-1
+0768334a48ac   hello-world          "/hello"                 7 minutes ago   Exited (0) 7 minutes ago                                                                                       objective_sammet
+66719f3ba3bd   hello-world          "/hello"                 7 minutes ago   Exited (0) 7 minutes ago                                                                                       adoring_shaw
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+ERROR:    Error loading ASGI app. Attribute "app" not found in module "main".
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
 
-#3 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm
-#3 ...
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
 
-#4 [internal] load metadata for ghcr.io/astral-sh/uv:latest
-#4 DONE 1.0s
+Data page checksums are disabled.
 
-#3 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm
-#3 DONE 1.1s
+fixing permissions on existing directory /var/lib/postgresql/data ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+sh: locale: not found
+2025-08-29 13:22:24.777 UTC [35] WARNING:  no usable system locales were found
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
 
-#5 [internal] load .dockerignore
-#5 transferring context: 2B done
-#5 DONE 0.0s
 
-#6 [internal] load build context
-#6 transferring context: 2B done
-#6 DONE 0.0s
+Success. You can now start the database server using:
 
-#7 [production 2/5] RUN apt-get update && apt-get install -y     ca-certificates     && rm -rf /var/lib/apt/lists/*
-#7 CACHED
+    pg_ctl -D /var/lib/postgresql/data -l logfile start
 
-#8 [production 1/5] RUN groupadd -r appuser && useradd -r -g appuser appuser
-#8 CACHED
+initdb: warning: enabling "trust" authentication for local connections
+initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+waiting for server to start....2025-08-29 13:22:25.446 UTC [41] LOG:  starting PostgreSQL 16.10 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+2025-08-29 13:22:25.450 UTC [41] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-08-29 13:22:25.459 UTC [44] LOG:  database system was shut down at 2025-08-29 13:22:25 UTC
+2025-08-29 13:22:25.470 UTC [41] LOG:  database system is ready to accept connections
+ done
+server started
+CREATE DATABASE
 
-#9 [builder 4/5] COPY apps/facturx-api/pyproject.toml apps/facturx-api/uv.lock ./
-#9 CACHED
 
-#10 [builder 5/5] RUN uv sync --frozen --no-cache
-#10 CACHED
+/usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/init-db.sql
+CREATE EXTENSION
+CREATE TYPE
+CREATE TYPE
+CREATE TYPE
+CREATE TYPE
+CREATE TYPE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+INSERT 0 1
+INSERT 0 1
+CREATE SEQUENCE
+CREATE FUNCTION
+GRANT
+GRANT
+GRANT
+CREATE ROLE
+GRANT
+GRANT
+GRANT
+psql:/docker-entrypoint-initdb.d/init-db.sql:233: WARNING:  there is no transaction in progress
+2025-08-29 13:22:25.761 UTC [54] WARNING:  there is no transaction in progress
+COMMIT
 
-#11 [production 3/5] WORKDIR /app
-#11 CACHED
 
-#12 [builder 1/5] RUN apt-get update && apt-get install -y     build-essential     curl     && rm -rf /var/lib/apt/lists/*
-#12 CACHED
+waiting for server to shut down....2025-08-29 13:22:25.762 UTC [41] LOG:  received fast shutdown request
+2025-08-29 13:22:25.764 UTC [41] LOG:  aborting any active transactions
+2025-08-29 13:22:25.767 UTC [41] LOG:  background worker "logical replication launcher" (PID 47) exited with exit code 1
+2025-08-29 13:22:25.769 UTC [42] LOG:  shutting down
+2025-08-29 13:22:25.771 UTC [42] LOG:  checkpoint starting: shutdown immediate
+2025-08-29 13:22:25.809 UTC [42] LOG:  checkpoint complete: wrote 972 buffers (5.9%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.025 s, sync=0.008 s, total=0.041 s; sync files=342, longest=0.003 s, average=0.001 s; distance=4529 kB, estimate=4529 kB; lsn=0/195EA50, redo lsn=0/195EA50
+2025-08-29 13:22:25.816 UTC [41] LOG:  database system is shut down
+ done
+server stopped
 
-#13 [builder 3/5] WORKDIR /app
-#13 CACHED
+PostgreSQL init process complete; ready for start up.
 
-#14 [production 4/5] COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
-#14 CACHED
-
-#15 [builder 2/5] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-#15 CACHED
-
-#16 [production 5/5] COPY --chown=appuser:appuser apps/facturx-api .
-#16 ERROR: failed to calculate checksum of ref 32c07f49-0299-4394-92bf-eb3ec10e894e::4i8swww4mcud8gyn8lkk48gha: "/apps/facturx-api": not found
-
-#17 FROM ghcr.io/astral-sh/uv:latest@sha256:f3660c56d5b08d6c516360981bedc439f499b9bf37f46a216018da3777a74011
-#17 resolve ghcr.io/astral-sh/uv:latest@sha256:f3660c56d5b08d6c516360981bedc439f499b9bf37f46a216018da3777a74011 0.0s done
-#17 DONE 0.0s
-
-#18 [base 1/1] FROM docker.io/library/python:3.12-slim-bookworm@sha256:42cf2422587a3dac0e0a3674a4d86f01570d5d7260588f3845f51e6176d8134b
-#18 resolve docker.io/library/python:3.12-slim-bookworm@sha256:42cf2422587a3dac0e0a3674a4d86f01570d5d7260588f3845f51e6176d8134b 0.0s done
-#18 DONE 0.0s
-------
- > [production 5/5] COPY --chown=appuser:appuser apps/facturx-api .:
-------
-Dockerfile:43
-
---------------------
-
-  41 |     
-
-  42 |     # Copy application code
-
-  43 | >>> COPY --chown=appuser:appuser apps/facturx-api .
-
-  44 |     
-
-  45 |     # Switch to non-root user
-
---------------------
-
-failed to solve: failed to compute cache key: failed to calculate checksum of ref 32c07f49-0299-4394-92bf-eb3ec10e894e::4i8swww4mcud8gyn8lkk48gha: "/apps/facturx-api": not found
-
-ubuntu@pipavps [01:17:44 PM] [~/projects/factur-x/infra/docker] [main]
--> % 
+2025-08-29 13:22:25.884 UTC [1] LOG:  starting PostgreSQL 16.10 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+2025-08-29 13:22:25.884 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-08-29 13:22:25.884 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-08-29 13:22:25.888 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-08-29 13:22:25.893 UTC [59] LOG:  database system was shut down at 2025-08-29 13:22:25 UTC
+2025-08-29 13:22:25.901 UTC [1] LOG:  database system is ready to accept connections
+1:C 29 Aug 2025 13:22:24.253 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+1:C 29 Aug 2025 13:22:24.255 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+1:C 29 Aug 2025 13:22:24.255 * Redis version=7.4.5, bits=64, commit=00000000, modified=0, pid=1, just started
+1:C 29 Aug 2025 13:22:24.255 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+1:M 29 Aug 2025 13:22:24.256 * monotonic clock: POSIX clock_gettime
+1:M 29 Aug 2025 13:22:24.258 * Running mode=standalone, port=6379.
+1:M 29 Aug 2025 13:22:24.258 * Server initialized
+1:M 29 Aug 2025 13:22:24.259 * Ready to accept connections tcp
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf is not a file or does not exist
+/docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+2025/08/29 13:22:24 [notice] 1#1: using the "epoll" event method
+2025/08/29 13:22:24 [notice] 1#1: nginx/1.29.1
+2025/08/29 13:22:24 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+2025/08/29 13:22:24 [notice] 1#1: OS: Linux 6.14.0-1011-oracle
+2025/08/29 13:22:24 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2025/08/29 13:22:24 [notice] 1#1: start worker processes
+2025/08/29 13:22:24 [notice] 1#1: start worker process 21
+2025/08/29 13:22:24 [notice] 1#1: start worker process 22
+2025/08/29 13:22:24 [notice] 1#1: start worker process 23
+2025/08/29 13:22:24 [notice] 1#1: start worker process 24
+91.224.92.17 - - [29/Aug/2025:13:23:34 +0000] "GET / HTTP/1.1" 200 615 "-" "-" "-"
+ubuntu@pipav
