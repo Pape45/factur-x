@@ -4,8 +4,6 @@ const nextConfig = {
   experimental: {
     // Enable experimental features if needed
   },
-  // Disable telemetry
-  telemetry: false,
   // Configure images if needed
   images: {
     unoptimized: true
