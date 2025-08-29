@@ -17,7 +17,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 WORKDIR /app
 
 # Copy dependency files
-COPY apps/facturx-api/pyproject.toml apps/facturx-api/uv.lock ./
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies
 RUN uv sync --frozen --no-cache
@@ -40,7 +40,7 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 # Copy application code
-COPY --chown=appuser:appuser apps/facturx-api .
+COPY --chown=appuser:appuser . .
 
 # Switch to non-root user
 USER appuser
