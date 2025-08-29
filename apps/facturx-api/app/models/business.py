@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Dict, Optional
-from pydantic import BaseModel, Field
-from .invoice import Address, TaxRegistration, LegalRegistration, BankAccount, CountryCode, CurrencyCode
+from pydantic import BaseModel, Field, ConfigDict
+from .invoice import Address, TaxRegistration, BankAccount, CountryCode, CurrencyCode
 
 
 class BusinessConfiguration(BaseModel):
@@ -101,11 +101,8 @@ class BusinessConfiguration(BaseModel):
     fiscal_year_start: str = Field("01-01", description="Fiscal year start (MM-DD)")
     fiscal_year_end: str = Field("12-31", description="Fiscal year end (MM-DD)")
     
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "company_name": "Factur-X Express SAS",
                 "trading_name": "FX Express",
@@ -127,6 +124,7 @@ class BusinessConfiguration(BaseModel):
                 "primary_color": "#2F6DF3"
             }
         }
+    )
 
 
 # Global business configuration instance

@@ -1,350 +1,497 @@
-"""Unit tests for XML generator service."""
+"""Tests for XML generator service."""
 
 import pytest
 from datetime import date
 from decimal import Decimal
-from xml.etree import ElementTree as ET
-
+from xml.etree.ElementTree import fromstring
 from app.services.xml_generator import XMLGenerator
 from app.models.invoice import (
-    Invoice, InvoiceLine, Party, Address, InvoiceTotals, VATBreakdown,
-    CurrencyCode, CountryCode, VATCategory, InvoiceType
+    Invoice, InvoiceLine, Party, Address, TaxRegistration, VATBreakdown,
+    InvoiceTotals, PaymentTerms, BankAccount,
+    CurrencyCode, CountryCode, VATCategory, InvoiceType, PaymentMeans
 )
+
 
 class TestXMLGenerator:
     """Test cases for XMLGenerator."""
     
     def setup_method(self):
-        """Setup test fixtures."""
+        """Set up test fixtures."""
         self.generator = XMLGenerator()
-        
-        # Sample invoice data
-        self.seller_address = Address(
+        self.sample_invoice = self._create_sample_invoice()
+    
+    def _create_sample_invoice(self) -> Invoice:
+        """Create a sample invoice for testing."""
+        seller_address = Address(
             street="42 Avenue des Champs-Élysées",
             city="Paris",
             postal_code="75008",
-            country_code=CountryCode.FR
+            country=CountryCode.FR
         )
         
-        self.seller = Party(
+        buyer_address = Address(
+            street="123 Rue de la Paix",
+            city="Lyon",
+            postal_code="69000",
+            country=CountryCode.FR
+        )
+        
+        seller = Party(
             name="Factur-X Express SAS",
-            address=self.seller_address,
-            vat_id="FR12345678901",
-            legal_registration="123456789"
+            address=seller_address,
+            tax_registration=TaxRegistration(vat_number="FR12345678901"),
+            contact_email="contact@facturx-express.fr",
+            contact_phone="+33123456789"
         )
         
-        self.buyer_address = Address(
-            street="123 Test Street",
-            city="Test City",
-            postal_code="12345",
-            country_code=CountryCode.FR
+        buyer = Party(
+            name="Example Client SARL",
+            address=buyer_address,
+            tax_registration=TaxRegistration(vat_number="FR98765432109")
         )
         
-        self.buyer = Party(
-            name="Test Buyer Company",
-            address=self.buyer_address,
-            vat_id="FR98765432109"
-        )
-        
-        self.invoice_line = InvoiceLine(
+        invoice_line = InvoiceLine(
             line_id="1",
-            name="Test Product",
-            description="A test product for XML generation",
-            quantity=Decimal("2.00"),
+            item_name="Factur-X Service",
+            item_description="Professional Factur-X generation service",
+            quantity=Decimal("1"),
             unit_price=Decimal("100.00"),
-            vat_category=VATCategory.STANDARD_RATE,
-            vat_rate=Decimal("20.00")
+            line_total_amount=Decimal("100.00"),
+            vat_category=VATCategory.STANDARD,
+            vat_rate=Decimal("20.0")
         )
         
-        self.vat_breakdown = VATBreakdown(
-            vat_category=VATCategory.STANDARD_RATE,
-            vat_rate=Decimal("20.00"),
-            taxable_amount=Decimal("200.00"),
-            vat_amount=Decimal("40.00")
+        vat_breakdown = VATBreakdown(
+            vat_category=VATCategory.STANDARD,
+            vat_rate=Decimal("20.0"),
+            taxable_amount=Decimal("100.00"),
+            vat_amount=Decimal("20.00")
         )
         
-        self.totals = InvoiceTotals(
-            net_total=Decimal("200.00"),
-            vat_total=Decimal("40.00"),
-            gross_total=Decimal("240.00"),
-            vat_breakdown=[self.vat_breakdown]
+        totals = InvoiceTotals(
+            line_total_amount=Decimal("100.00"),
+            tax_exclusive_amount=Decimal("100.00"),
+            tax_total_amount=Decimal("20.00"),
+            tax_inclusive_amount=Decimal("120.00"),
+            payable_amount=Decimal("120.00")
         )
         
-        self.invoice = Invoice(
-            invoice_id="test-invoice-1",
-            invoice_number="FX-2024-0001",
-            seller=self.seller,
-            buyer=self.buyer,
-            lines=[self.invoice_line],
-            totals=self.totals,
+        bank_account = BankAccount(
+            iban="FR1420041010050500013M02606",
+            bic="PSSTFRPPPAR",
+            account_name="Factur-X Express SAS",
+            bank_name="La Banque Postale"
+        )
+        
+        payment_terms = PaymentTerms(
+            payment_means_code=PaymentMeans.BANK_TRANSFER,
+            payment_terms_description="Payment due within 30 days",
+            due_date=date(2024, 2, 14),
+            payment_reference="REF-2024-001",
+            bank_account=bank_account
+        )
+        
+        return Invoice(
+            invoice_number="FX-2024-000001",
+            invoice_type=InvoiceType.COMMERCIAL,
             issue_date=date(2024, 1, 15),
-            due_date=date(2024, 2, 15),
-            currency=CurrencyCode.EUR,
-            invoice_type=InvoiceType.COMMERCIAL_INVOICE
+            due_date=date(2024, 2, 14),
+            currency_code=CurrencyCode.EUR,
+            seller=seller,
+            buyer=buyer,
+            invoice_lines=[invoice_line],
+            vat_breakdown=[vat_breakdown],
+            totals=totals,
+            payment_terms=payment_terms,
+            order_reference="PO-2024-001",
+            contract_reference="CONTRACT-2024-001",
+            invoice_note="Thank you for your business!"
         )
     
-    def test_generate_xml_basic_structure(self):
-        """Test basic XML structure generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
+    def test_init(self):
+        """Test XMLGenerator initialization."""
+        assert isinstance(self.generator, XMLGenerator)
+        assert isinstance(self.generator.namespaces, dict)
+        assert 'rsm' in self.generator.namespaces
+        assert 'ram' in self.generator.namespaces
+        assert 'udt' in self.generator.namespaces
+    
+    def test_generate_cii_xml_basic(self):
+        """Test basic CII XML generation."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
         
-        assert xml_content is not None
         assert isinstance(xml_content, str)
-        assert len(xml_content) > 0
+        assert '<?xml version="1.0" ?>' in xml_content
+        assert 'rsm:CrossIndustryInvoice' in xml_content
+        assert 'FX-2024-000001' in xml_content  # Invoice number
+        assert 'Factur-X Express SAS' in xml_content  # Seller name
+        assert 'Example Client SARL' in xml_content  # Buyer name
+    
+    def test_generate_cii_xml_structure(self):
+        """Test CII XML structure and required elements."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
         
-        # Parse XML to verify structure
-        root = ET.fromstring(xml_content)
-        
-        # Check root element
-        assert root.tag.endswith('CrossIndustryInvoice')
+        # Check namespaces - ElementTree includes full namespace URI in tag
+        expected_tag = '{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice'
+        assert root.tag == expected_tag
         
         # Check main sections
-        exchange_context = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ExchangedDocumentContext')
-        assert exchange_context is not None
-        
-        document_header = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ExchangedDocument')
-        assert document_header is not None
-        
-        supply_chain = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SupplyChainTradeTransaction')
-        assert supply_chain is not None
-    
-    def test_exchange_context_generation(self):
-        """Test exchange context generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
-        
-        # Find exchange context
-        context = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ExchangedDocumentContext')
+        context = root.find('.//rsm:ExchangedDocumentContext', self.generator.namespaces)
         assert context is not None
         
-        # Check business process specified document context parameter
-        business_process = context.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}BusinessProcessSpecifiedDocumentContextParameter')
-        assert business_process is not None
+        document = root.find('.//rsm:ExchangedDocument', self.generator.namespaces)
+        assert document is not None
         
-        # Check guideline specified document context parameter
-        guideline = context.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}GuidelineSpecifiedDocumentContextParameter')
-        assert guideline is not None
+        transaction = root.find('.//rsm:SupplyChainTradeTransaction', self.generator.namespaces)
+        assert transaction is not None
+    
+    def test_add_exchange_context(self):
+        """Test ExchangedDocumentContext section."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
         
-        guideline_id = guideline.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}ID')
+        # Check business process
+        business_process_id = root.find(
+            './/ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID',
+            self.generator.namespaces
+        )
+        assert business_process_id is not None
+        assert business_process_id.text == 'A1'
+        
+        # Check guideline
+        guideline_id = root.find(
+            './/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID',
+            self.generator.namespaces
+        )
         assert guideline_id is not None
         assert 'urn:cen.eu:en16931:2017' in guideline_id.text
     
-    def test_document_header_generation(self):
-        """Test document header generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
-        
-        # Find document header
-        document = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ExchangedDocument')
-        assert document is not None
+    def test_add_exchanged_document(self):
+        """Test ExchangedDocument section."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
         
         # Check invoice number
-        invoice_id = document.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}ID')
+        invoice_id = root.find('.//rsm:ExchangedDocument/ram:ID', self.generator.namespaces)
         assert invoice_id is not None
-        assert invoice_id.text == self.invoice.invoice_number
+        assert invoice_id.text == 'FX-2024-000001'
         
         # Check type code
-        type_code = document.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}TypeCode')
+        type_code = root.find('.//rsm:ExchangedDocument/ram:TypeCode', self.generator.namespaces)
         assert type_code is not None
-        assert type_code.text == "380"  # Commercial invoice
+        assert type_code.text == '380'
         
         # Check issue date
-        issue_date = document.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}IssueDateTime')
+        issue_date = root.find(
+            './/rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString',
+            self.generator.namespaces
+        )
         assert issue_date is not None
+        assert issue_date.text == '20240115'
+        assert issue_date.get('format') == '102'
     
-    def test_seller_party_generation(self):
-        """Test seller party information generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
+    def test_add_line_item(self):
+        """Test line item generation."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
         
-        # Find seller party
-        seller_party = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SellerTradeParty')
-        assert seller_party is not None
-        
-        # Check seller name
-        seller_name = seller_party.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}Name')
-        assert seller_name is not None
-        assert seller_name.text == self.seller.name
-        
-        # Check seller address
-        postal_address = seller_party.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}PostalTradeAddress')
-        assert postal_address is not None
-        
-        # Check VAT registration
-        vat_registration = seller_party.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SpecifiedTaxRegistration')
-        assert vat_registration is not None
-        
-        vat_id = vat_registration.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}ID')
-        assert vat_id is not None
-        assert vat_id.text == self.seller.vat_id
-    
-    def test_buyer_party_generation(self):
-        """Test buyer party information generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
-        
-        # Find buyer party
-        buyer_party = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}BuyerTradeParty')
-        assert buyer_party is not None
-        
-        # Check buyer name
-        buyer_name = buyer_party.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}Name')
-        assert buyer_name is not None
-        assert buyer_name.text == self.buyer.name
-        
-        # Check buyer address
-        postal_address = buyer_party.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}PostalTradeAddress')
-        assert postal_address is not None
-    
-    def test_line_items_generation(self):
-        """Test line items generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
-        
-        # Find line items
-        line_items = root.findall('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}IncludedSupplyChainTradeLineItem')
-        assert len(line_items) == len(self.invoice.lines)
-        
-        line_item = line_items[0]
+        # Check line item exists
+        line_item = root.find('.//ram:IncludedSupplyChainTradeLineItem', self.generator.namespaces)
+        assert line_item is not None
         
         # Check line ID
-        line_id = line_item.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}AssociatedDocumentLineDocument/{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}LineID')
+        line_id = root.find(
+            './/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:LineID',
+            self.generator.namespaces
+        )
         assert line_id is not None
-        assert line_id.text == self.invoice_line.line_id
+        assert line_id.text == '1'
         
         # Check product name
-        product_name = line_item.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SpecifiedTradeProduct/{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}Name')
+        product_name = root.find(
+            './/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:Name',
+            self.generator.namespaces
+        )
         assert product_name is not None
-        assert product_name.text == self.invoice_line.name
+        assert product_name.text == 'Factur-X Service'
+        
+        # Check unit price
+        unit_price = root.find(
+            './/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:ChargeAmount',
+            self.generator.namespaces
+        )
+        assert unit_price is not None
+        assert unit_price.text == '100.00'
+        assert unit_price.get('currencyID') == 'EUR'
         
         # Check quantity
-        quantity = line_item.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}BilledQuantity')
+        quantity = root.find(
+            './/ram:SpecifiedLineTradeDelivery/ram:BilledQuantity',
+            self.generator.namespaces
+        )
         assert quantity is not None
-        assert Decimal(quantity.text) == self.invoice_line.quantity
-    
-    def test_monetary_totals_generation(self):
-        """Test monetary totals generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
+        assert quantity.text == '1'
         
-        # Find monetary summation
-        monetary_summation = root.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SpecifiedTradeSettlementHeaderMonetarySummation')
-        assert monetary_summation is not None
-        
-        # Check net total
-        net_total = monetary_summation.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}LineTotalAmount')
-        assert net_total is not None
-        assert Decimal(net_total.text) == self.totals.net_total
-        
-        # Check VAT total
-        vat_total = monetary_summation.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}TaxTotalAmount')
-        assert vat_total is not None
-        assert Decimal(vat_total.text) == self.totals.vat_total
-        
-        # Check gross total
-        gross_total = monetary_summation.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}GrandTotalAmount')
-        assert gross_total is not None
-        assert Decimal(gross_total.text) == self.totals.gross_total
-    
-    def test_vat_breakdown_generation(self):
-        """Test VAT breakdown generation."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
-        
-        # Find VAT breakdown
-        vat_breakdowns = root.findall('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableTradeTax')
-        assert len(vat_breakdowns) >= 1
-        
-        vat_breakdown = vat_breakdowns[0]
-        
-        # Check VAT rate
-        vat_rate = vat_breakdown.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}RateApplicablePercent')
+        # Check VAT
+        vat_rate = root.find(
+            './/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:RateApplicablePercent',
+            self.generator.namespaces
+        )
         assert vat_rate is not None
-        assert Decimal(vat_rate.text) == self.vat_breakdown.vat_rate
+        assert vat_rate.text == '20.0'
+    
+    def test_add_header_trade_agreement(self):
+        """Test header trade agreement section."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
         
-        # Check taxable amount
-        taxable_amount = vat_breakdown.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}BasisAmount')
-        assert taxable_amount is not None
-        assert Decimal(taxable_amount.text) == self.vat_breakdown.taxable_amount
+        # Check buyer reference
+        buyer_ref = root.find(
+            './/ram:ApplicableHeaderTradeAgreement/ram:BuyerReference',
+            self.generator.namespaces
+        )
+        assert buyer_ref is not None
+        assert buyer_ref.text == 'PO-2024-001'
         
-        # Check VAT amount
-        vat_amount = vat_breakdown.find('.//{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}CalculatedAmount')
+        # Check seller party
+        seller_name = root.find(
+            './/ram:SellerTradeParty/ram:Name',
+            self.generator.namespaces
+        )
+        assert seller_name is not None
+        assert seller_name.text == 'Factur-X Express SAS'
+        
+        # Check buyer party
+        buyer_name = root.find(
+            './/ram:BuyerTradeParty/ram:Name',
+            self.generator.namespaces
+        )
+        assert buyer_name is not None
+        assert buyer_name.text == 'Example Client SARL'
+        
+        # Check contract reference
+        contract_ref = root.find(
+            './/ram:ContractReferencedDocument/ram:IssuerAssignedID',
+            self.generator.namespaces
+        )
+        assert contract_ref is not None
+        assert contract_ref.text == 'CONTRACT-2024-001'
+    
+    def test_add_trade_party_info(self):
+        """Test trade party information generation."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
+        
+        # Check seller address
+        seller_street = root.find(
+            './/ram:SellerTradeParty/ram:PostalTradeAddress/ram:LineOne',
+            self.generator.namespaces
+        )
+        assert seller_street is not None
+        assert seller_street.text == '42 Avenue des Champs-Élysées'
+        
+        seller_city = root.find(
+            './/ram:SellerTradeParty/ram:PostalTradeAddress/ram:CityName',
+            self.generator.namespaces
+        )
+        assert seller_city is not None
+        assert seller_city.text == 'Paris'
+        
+        seller_country = root.find(
+            './/ram:SellerTradeParty/ram:PostalTradeAddress/ram:CountryID',
+            self.generator.namespaces
+        )
+        assert seller_country is not None
+        assert seller_country.text == 'FR'
+        
+        # Check VAT number
+        seller_vat = root.find(
+            './/ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID',
+            self.generator.namespaces
+        )
+        assert seller_vat is not None
+        assert seller_vat.text == 'FR12345678901'
+        assert seller_vat.get('schemeID') == 'VA'
+        
+        # Check contact info
+        seller_email = root.find(
+            './/ram:SellerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID',
+            self.generator.namespaces
+        )
+        assert seller_email is not None
+        assert seller_email.text == 'contact@facturx-express.fr'
+    
+    def test_add_header_trade_settlement(self):
+        """Test header trade settlement section."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
+        
+        # Check currency
+        currency = root.find(
+            './/ram:ApplicableHeaderTradeSettlement/ram:InvoiceCurrencyCode',
+            self.generator.namespaces
+        )
+        assert currency is not None
+        assert currency.text == 'EUR'
+        
+        # Check VAT breakdown
+        vat_amount = root.find(
+            './/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CalculatedAmount',
+            self.generator.namespaces
+        )
         assert vat_amount is not None
-        assert Decimal(vat_amount.text) == self.vat_breakdown.vat_amount
+        assert vat_amount.text == '20.00'
+        assert vat_amount.get('currencyID') == 'EUR'
+        
+        # Check totals
+        line_total = root.find(
+            './/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:LineTotalAmount',
+            self.generator.namespaces
+        )
+        assert line_total is not None
+        assert line_total.text == '100.00'
+        
+        tax_total = root.find(
+            './/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount',
+            self.generator.namespaces
+        )
+        assert tax_total is not None
+        assert tax_total.text == '20.00'
+        
+        grand_total = root.find(
+            './/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:GrandTotalAmount',
+            self.generator.namespaces
+        )
+        assert grand_total is not None
+        assert grand_total.text == '120.00'
     
-    def test_xml_validation(self):
-        """Test XML validation."""
-        xml_content = self.generator.generate_xml(self.invoice)
+    def test_validate_xml_structure_valid(self):
+        """Test XML structure validation with valid XML."""
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        result = self.generator.validate_xml_structure(xml_content)
         
-        # Basic validation - should parse without errors
-        root = ET.fromstring(xml_content)
-        assert root is not None
-        
-        # Validate using the generator's validation method
-        is_valid, errors = self.generator.validate_xml_structure(xml_content)
-        assert is_valid, f"XML validation failed: {errors}"
+        assert result['is_valid'] is True
+        assert len(result['errors']) == 0
+        assert isinstance(result['warnings'], list)
     
-    def test_xml_namespaces(self):
-        """Test XML namespaces are correctly defined."""
-        xml_content = self.generator.generate_xml(self.invoice)
+    def test_validate_xml_structure_invalid(self):
+        """Test XML structure validation with invalid XML."""
+        invalid_xml = "<invalid>not a valid factur-x xml</invalid>"
+        result = self.generator.validate_xml_structure(invalid_xml)
         
-        # Check that required namespaces are present
-        assert 'xmlns:rsm=' in xml_content
-        assert 'xmlns:qdt=' in xml_content
-        assert 'xmlns:ram=' in xml_content
-        assert 'xmlns:xs=' in xml_content
-        assert 'xmlns:udt=' in xml_content
+        assert result['is_valid'] is False
+        assert len(result['errors']) > 0
+        assert any('Missing required element' in error for error in result['errors'])
     
-    def test_currency_codes(self):
-        """Test currency codes in XML."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
+    def test_validate_xml_structure_malformed(self):
+        """Test XML structure validation with malformed XML."""
+        malformed_xml = "<invalid>not closed"
+        result = self.generator.validate_xml_structure(malformed_xml)
         
-        # Find currency codes
-        currency_elements = root.findall('.//*[@currencyID]')
-        assert len(currency_elements) > 0
-        
-        # All currency codes should match invoice currency
-        for element in currency_elements:
-            assert element.get('currencyID') == self.invoice.currency.value
+        assert result['is_valid'] is False
+        assert len(result['errors']) > 0
+        assert any('XML parsing error' in error for error in result['errors'])
     
-    def test_date_formatting(self):
-        """Test date formatting in XML."""
-        xml_content = self.generator.generate_xml(self.invoice)
-        root = ET.fromstring(xml_content)
-        
-        # Find issue date
-        issue_date = root.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}IssueDateTime')
-        assert issue_date is not None
-        
-        # Check date format (should be YYYYMMDD)
-        date_value = issue_date.find('.//{urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100}DateTimeString')
-        assert date_value is not None
-        assert len(date_value.text) == 8  # YYYYMMDD format
-        assert date_value.text.isdigit()
-    
-    def test_empty_invoice_lines(self):
-        """Test handling of invoice with no lines."""
-        empty_invoice = Invoice(
-            invoice_id="empty-invoice",
-            invoice_number="FX-2024-0002",
-            seller=self.seller,
-            buyer=self.buyer,
-            lines=[],  # Empty lines
-            totals=InvoiceTotals(
-                net_total=Decimal("0.00"),
-                vat_total=Decimal("0.00"),
-                gross_total=Decimal("0.00"),
-                vat_breakdown=[]
-            ),
-            issue_date=date.today(),
-            due_date=date.today(),
-            currency=CurrencyCode.EUR,
-            invoice_type=InvoiceType.COMMERCIAL_INVOICE
+    def test_multiple_invoice_lines(self):
+        """Test XML generation with multiple invoice lines."""
+        # Add another line to the invoice
+        second_line = InvoiceLine(
+            line_id="2",
+            item_name="Additional Service",
+            quantity=Decimal("2"),
+            unit_price=Decimal("50.00"),
+            line_total_amount=Decimal("100.00"),
+            vat_category=VATCategory.STANDARD,
+            vat_rate=Decimal("20.0")
         )
         
-        xml_content = self.generator.generate_xml(empty_invoice)
-        assert xml_content is not None
+        self.sample_invoice.invoice_lines.append(second_line)
         
-        # Should still be valid XML
-        root = ET.fromstring(xml_content)
-        assert root is not None
+        # Update totals
+        self.sample_invoice.totals.line_total_amount = Decimal("200.00")
+        self.sample_invoice.totals.tax_exclusive_amount = Decimal("200.00")
+        self.sample_invoice.totals.tax_total_amount = Decimal("40.00")
+        self.sample_invoice.totals.tax_inclusive_amount = Decimal("240.00")
+        self.sample_invoice.totals.payable_amount = Decimal("240.00")
+        
+        # Update VAT breakdown
+        self.sample_invoice.vat_breakdown[0].taxable_amount = Decimal("200.00")
+        self.sample_invoice.vat_breakdown[0].vat_amount = Decimal("40.00")
+        
+        xml_content = self.generator.generate_cii_xml(self.sample_invoice)
+        root = fromstring(xml_content)
+        
+        # Check that both lines are present
+        line_items = root.findall('.//ram:IncludedSupplyChainTradeLineItem', self.generator.namespaces)
+        assert len(line_items) == 2
+        
+        # Check line IDs
+        line_ids = []
+        for item in line_items:
+            line_id = item.find('.//ram:LineID', self.generator.namespaces)
+            if line_id is not None:
+                line_ids.append(line_id.text)
+        
+        assert '1' in line_ids
+        assert '2' in line_ids
+    
+    def test_invoice_without_optional_fields(self):
+        """Test XML generation with minimal invoice data."""
+        # Create minimal invoice
+        minimal_invoice = Invoice(
+            invoice_number="MIN-001",
+            issue_date=date(2024, 1, 15),
+            currency_code=CurrencyCode.EUR,
+            seller=Party(
+                name="Minimal Seller",
+                address=Address(
+                    street="123 Street",
+                    city="City",
+                    postal_code="12345",
+                    country=CountryCode.FR
+                )
+            ),
+            buyer=Party(
+                name="Minimal Buyer",
+                address=Address(
+                    street="456 Avenue",
+                    city="Town",
+                    postal_code="67890",
+                    country=CountryCode.FR
+                )
+            ),
+            invoice_lines=[InvoiceLine(
+                line_id="1",
+                item_name="Service",
+                quantity=Decimal("1"),
+                unit_price=Decimal("100.00"),
+                line_total_amount=Decimal("100.00"),
+                vat_category=VATCategory.STANDARD,
+                vat_rate=Decimal("20.0")
+            )],
+            vat_breakdown=[VATBreakdown(
+                vat_category=VATCategory.STANDARD,
+                vat_rate=Decimal("20.0"),
+                taxable_amount=Decimal("100.00"),
+                vat_amount=Decimal("20.00")
+            )],
+            totals=InvoiceTotals(
+                line_total_amount=Decimal("100.00"),
+                tax_exclusive_amount=Decimal("100.00"),
+                tax_total_amount=Decimal("20.00"),
+                tax_inclusive_amount=Decimal("120.00"),
+                payable_amount=Decimal("120.00")
+            )
+        )
+        
+        xml_content = self.generator.generate_cii_xml(minimal_invoice)
+        
+        assert isinstance(xml_content, str)
+        assert 'MIN-001' in xml_content
+        assert 'Minimal Seller' in xml_content
+        assert 'Minimal Buyer' in xml_content
+        
+        # Validate structure
+        result = self.generator.validate_xml_structure(xml_content)
+        assert result['is_valid'] is True

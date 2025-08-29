@@ -1,6 +1,6 @@
 """Custom exceptions for Factur-X API."""
 
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 class FacturXError(Exception):
     """Base exception for Factur-X related errors."""

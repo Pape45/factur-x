@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, validator, root_validator
+from typing import List, Optional
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class CurrencyCode(str, Enum):
@@ -151,11 +151,12 @@ class InvoiceLine(BaseModel):
     item_classification: Optional[str] = Field(None, max_length=100, description="Item classification")
     origin_country: Optional[CountryCode] = Field(None, description="Country of origin")
     
-    @validator('line_total_amount')
-    def validate_line_total(cls, v, values):
+    @field_validator('line_total_amount')
+    @classmethod
+    def validate_line_total(cls, v, info):
         """Validate that line total equals quantity * unit_price"""
-        if 'quantity' in values and 'unit_price' in values:
-            expected_total = values['quantity'] * values['unit_price']
+        if info.data and 'quantity' in info.data and 'unit_price' in info.data:
+            expected_total = info.data['quantity'] * info.data['unit_price']
             if abs(v - expected_total) > Decimal('0.01'):
                 raise ValueError('Line total must equal quantity * unit_price')
         return v
@@ -172,29 +173,32 @@ class InvoiceTotals(BaseModel):
     prepaid_amount: Decimal = Field(0, ge=0, description="Prepaid amount")
     payable_amount: Decimal = Field(..., ge=0, description="Amount due for payment")
     
-    @validator('tax_exclusive_amount')
-    def validate_tax_exclusive(cls, v, values):
+    @field_validator('tax_exclusive_amount')
+    @classmethod
+    def validate_tax_exclusive(cls, v, info):
         """Validate tax exclusive amount calculation"""
-        if all(k in values for k in ['line_total_amount', 'allowance_total_amount', 'charge_total_amount']):
-            expected = values['line_total_amount'] - values['allowance_total_amount'] + values['charge_total_amount']
+        if info.data and all(k in info.data for k in ['line_total_amount', 'allowance_total_amount', 'charge_total_amount']):
+            expected = info.data['line_total_amount'] - info.data['allowance_total_amount'] + info.data['charge_total_amount']
             if abs(v - expected) > Decimal('0.01'):
                 raise ValueError('Tax exclusive amount calculation error')
         return v
     
-    @validator('tax_inclusive_amount')
-    def validate_tax_inclusive(cls, v, values):
+    @field_validator('tax_inclusive_amount')
+    @classmethod
+    def validate_tax_inclusive(cls, v, info):
         """Validate tax inclusive amount calculation"""
-        if all(k in values for k in ['tax_exclusive_amount', 'tax_total_amount']):
-            expected = values['tax_exclusive_amount'] + values['tax_total_amount']
+        if info.data and all(k in info.data for k in ['tax_exclusive_amount', 'tax_total_amount']):
+            expected = info.data['tax_exclusive_amount'] + info.data['tax_total_amount']
             if abs(v - expected) > Decimal('0.01'):
                 raise ValueError('Tax inclusive amount calculation error')
         return v
     
-    @validator('payable_amount')
-    def validate_payable_amount(cls, v, values):
+    @field_validator('payable_amount')
+    @classmethod
+    def validate_payable_amount(cls, v, info):
         """Validate payable amount calculation"""
-        if all(k in values for k in ['tax_inclusive_amount', 'prepaid_amount']):
-            expected = values['tax_inclusive_amount'] - values['prepaid_amount']
+        if info.data and all(k in info.data for k in ['tax_inclusive_amount', 'prepaid_amount']):
+            expected = info.data['tax_inclusive_amount'] - info.data['prepaid_amount']
             if abs(v - expected) > Decimal('0.01'):
                 raise ValueError('Payable amount calculation error')
         return v
@@ -214,10 +218,10 @@ class Invoice(BaseModel):
     buyer: Party = Field(..., description="Buyer information")
     
     # Invoice lines
-    invoice_lines: List[InvoiceLine] = Field(..., min_items=1, description="Invoice line items")
+    invoice_lines: List[InvoiceLine] = Field(..., min_length=1, description="Invoice line items")
     
     # VAT breakdown
-    vat_breakdown: List[VATBreakdown] = Field(..., min_items=1, description="VAT breakdown by category")
+    vat_breakdown: List[VATBreakdown] = Field(..., min_length=1, description="VAT breakdown by category")
     
     # Totals
     totals: InvoiceTotals = Field(..., description="Invoice totals")
@@ -235,13 +239,8 @@ class Invoice(BaseModel):
     preceding_invoice_number: Optional[str] = Field(None, max_length=50, description="Preceding invoice number")
     preceding_invoice_date: Optional[date] = Field(None, description="Preceding invoice date")
     
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v),
-            date: lambda v: v.isoformat(),
-            datetime: lambda v: v.isoformat()
-        }
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "invoice_number": "FX-2024-000001",
                 "invoice_type": "380",
@@ -297,6 +296,7 @@ class Invoice(BaseModel):
                 }
             }
         }
+    )
 
 
 class InvoiceCreateRequest(BaseModel):
@@ -311,7 +311,7 @@ class InvoiceCreateRequest(BaseModel):
     buyer: Party = Field(..., description="Buyer information")
     
     # Invoice lines (required)
-    invoice_lines: List[InvoiceLine] = Field(..., min_items=1, description="Invoice line items")
+    invoice_lines: List[InvoiceLine] = Field(..., min_length=1, description="Invoice line items")
     
     # Optional fields
     order_reference: Optional[str] = Field(None, description="Buyer's purchase order reference")
@@ -324,8 +324,8 @@ class InvoiceCreateRequest(BaseModel):
     # Additional notes
     invoice_note: Optional[str] = Field(None, description="Additional notes")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "due_date": "2024-02-14",
                 "currency_code": "EUR",
@@ -356,6 +356,7 @@ class InvoiceCreateRequest(BaseModel):
                 "invoice_note": "Thank you for your business!"
             }
         }
+    )
 
 
 class InvoiceResponse(BaseModel):
@@ -365,8 +366,8 @@ class InvoiceResponse(BaseModel):
     status: str = Field(..., description="Operation status")
     message: str = Field(..., description="Status message")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "invoice": {
                     "invoice_number": "FX-2024-000001",
@@ -384,3 +385,4 @@ class InvoiceResponse(BaseModel):
                 "message": "Invoice created successfully"
             }
         }
+    )

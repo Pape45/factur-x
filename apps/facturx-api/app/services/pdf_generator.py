@@ -329,7 +329,7 @@ class PDFGenerator:
             story.append(payment_title)
             
             payment_text = Paragraph(
-                invoice.payment_terms.terms_description,
+                invoice.payment_terms.payment_terms_description,
                 self.styles['Normal']
             )
             story.append(payment_text)

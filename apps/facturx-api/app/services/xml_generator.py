@@ -206,7 +206,8 @@ class XMLGenerator:
         # Specified trade payment terms
         if invoice.payment_terms:
             payment_terms = SubElement(settlement, 'ram:SpecifiedTradePaymentTerms')
-            SubElement(payment_terms, 'ram:Description').text = invoice.payment_terms.terms_description
+            if invoice.payment_terms.payment_terms_description:
+                SubElement(payment_terms, 'ram:Description').text = invoice.payment_terms.payment_terms_description
             
             # Due date
             if invoice.due_date:
@@ -286,16 +287,19 @@ class XMLGenerator:
         # Legal registration (for seller) - removed as it's causing validation issues
         
         # Contact information
-        if hasattr(party, 'contact') and party.contact:
+        if party.contact_name or party.contact_phone or party.contact_email:
             contact = SubElement(party_element, 'ram:DefinedTradeContact')
             
-            if party.contact.get('telephone'):
-                telephone = SubElement(contact, 'ram:TelephoneUniversalCommunication')
-                SubElement(telephone, 'ram:CompleteNumber').text = party.contact['telephone']
+            if party.contact_name:
+                SubElement(contact, 'ram:PersonName').text = party.contact_name
             
-            if party.contact.get('email'):
+            if party.contact_phone:
+                telephone = SubElement(contact, 'ram:TelephoneUniversalCommunication')
+                SubElement(telephone, 'ram:CompleteNumber').text = party.contact_phone
+            
+            if party.contact_email:
                 email = SubElement(contact, 'ram:EmailURIUniversalCommunication')
-                SubElement(email, 'ram:URIID').text = party.contact['email']
+                SubElement(email, 'ram:URIID').text = party.contact_email
     
     def validate_xml_structure(self, xml_content: str) -> Dict[str, Any]:
         """Validate the generated XML structure"""
